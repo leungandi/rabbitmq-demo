@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:rabbit="http://www.springframework.org/schema/rabbit"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/rabbit http://www.springframework.org/schema/rabbit/spring-rabbit.xsd">
+
+    <!--RabbitMQ 服务器-->
+    <rabbit:connection-factory id="connectionFactory" addresses="192.168.56.128:5672"
+                               username="admin" password="admin" virtual-host="/"/>
+
+    <rabbit:admin connection-factory="connectionFactory"/>
+
+    <!--生产者-->
+    <!--定义queue -->
+    <rabbit:queue name="com.szl.direct.que" durable="true" auto-delete="false" exclusive="false"  />
+
+    <!--定义exchange -->
+    <rabbit:direct-exchange name="com.szl.direct.exchange" durable="true" auto-delete="false">
+        <rabbit:bindings>
+            <rabbit:binding queue="com.szl.direct.que" key="com.szl.direct.que.routing"/>
+        </rabbit:bindings>
+    </rabbit:direct-exchange>
+
+    <!--声明一个 RabbitMQ Template-->
+    <rabbit:template id="amqpTemplate"  connection-factory="connectionFactory" exchange="com.szl.direct.exchange" queue="com.szl.direct.que" routing-key="com.szl.direct.que.routing"/>
+
+    <!--数据装换类-->
+    <bean id="jackson2JsonMessageConverter"
+          class="org.springframework.amqp.support.converter.Jackson2JsonMessageConverter"/>
+
+
+
+    <!-- 消费者 -->
+    <bean name="mqCustomer" class="com.szl.rabbit.customer.MqCustomer"/>
+    <!-- 配置监听 -->
+    <rabbit:listener-container connection-factory="connectionFactory" message-converter="jackson2JsonMessageConverter">
+        <rabbit:listener ref="mqCustomer" queue-names="com.szl.direct.que" method="onMessage"/>
+    </rabbit:listener-container>
+</beans>
